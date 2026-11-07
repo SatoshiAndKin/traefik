@@ -61,7 +61,19 @@ func buildSingleHostProxy(target *url.URL, passHostHeader bool, preservePath boo
 		ErrorHandler:  ErrorHandler,
 	}
 
-	return newH2CUpgradeHandler(proxy)
+	handler := newH2CUpgradeHandler(proxy)
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// HTTP/1 must not close the incoming body while the transport still
+		// checks its EOF: that would close the backend during response copying.
+		if req.ProtoMajor == 1 {
+			err := http.NewResponseController(rw).EnableFullDuplex()
+			if err != nil && !errors.Is(err, http.ErrNotSupported) {
+				ErrorHandler(rw, req, err)
+				return
+			}
+		}
+		handler.ServeHTTP(rw, req)
+	})
 }
 
 func rewriteRequestBuilder(target *url.URL, passHostHeader bool, preservePath bool) func(*httputil.ProxyRequest) {
