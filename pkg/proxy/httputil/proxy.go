@@ -71,6 +71,12 @@ func buildSingleHostProxy(target *url.URL, passHostHeader bool, preservePath boo
 				ErrorHandler(rw, req, err)
 				return
 			}
+			if req.Body != nil && req.Body != http.NoBody {
+				body := &requestBodyProgress{ReadCloser: req.Body, remaining: req.ContentLength}
+				req = req.WithContext(req.Context())
+				req.Body = body
+				rw = &earlyResponseWriter{ResponseWriter: rw, body: body}
+			}
 		}
 		handler.ServeHTTP(rw, req)
 	})
