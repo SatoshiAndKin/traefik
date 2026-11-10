@@ -72,10 +72,15 @@ func buildSingleHostProxy(target *url.URL, passHostHeader bool, preservePath boo
 				return
 			}
 			if req.Body != nil && req.Body != http.NoBody {
-				body := &requestBodyProgress{ReadCloser: req.Body, remaining: req.ContentLength}
-				req = req.WithContext(req.Context())
-				req.Body = body
-				rw = &earlyResponseWriter{ResponseWriter: rw, body: body}
+				// Keep the request copy and body tracker in one allocation on the normal request path.
+				writer := &earlyResponseWriter{
+					ResponseWriter: rw,
+					request:        *req,
+					body:           requestBodyProgress{ReadCloser: req.Body, remaining: req.ContentLength},
+				}
+				writer.request.Body = &writer.body
+				req = &writer.request
+				rw = writer
 			}
 		}
 		handler.ServeHTTP(rw, req)

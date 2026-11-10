@@ -34,7 +34,8 @@ func (b *requestBodyProgress) Read(p []byte) (int, error) {
 type earlyResponseWriter struct {
 	http.ResponseWriter
 
-	body     *requestBodyProgress
+	request  http.Request
+	body     requestBodyProgress
 	writeErr error
 }
 
