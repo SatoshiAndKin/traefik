@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"time"
@@ -269,9 +270,9 @@ func (c connWithTimeouts) Write(b []byte) (n int, err error) {
 	return n, nil
 }
 
-func customDialContext(d *net.Dialer, cfg *dynamic.ForwardingTimeouts) func(ctx context.Context, network string, address string) (net.Conn, error) {
+func customDialContext(dial func(context.Context, string, string) (net.Conn, error), cfg *dynamic.ForwardingTimeouts) func(ctx context.Context, network string, address string) (net.Conn, error) {
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
-		conn, err := d.DialContext(ctx, network, address)
+		conn, err := dial(ctx, network, address)
 
 		if cfg.ReadTimeout <= 0 && cfg.WriteTimeout <= 0 {
 			return conn, err
@@ -304,9 +305,21 @@ func (t *TransportManager) createRoundTripper(cfg *dynamic.ServersTransport, tls
 		dialer.Timeout = time.Duration(cfg.ForwardingTimeouts.DialTimeout)
 	}
 
+	dial := dialer.DialContext
+	proxy := http.ProxyFromEnvironment
+	if cfg.UnixSocket != "" {
+		if !filepath.IsAbs(cfg.UnixSocket) {
+			return nil, errors.New("unixSocket must be an absolute path")
+		}
+		dial = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", cfg.UnixSocket)
+		}
+		proxy = nil
+	}
+
 	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           dialer.DialContext,
+		Proxy:                 proxy,
+		DialContext:           dial,
 		MaxIdleConnsPerHost:   cfg.MaxIdleConnsPerHost,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -319,7 +332,7 @@ func (t *TransportManager) createRoundTripper(cfg *dynamic.ServersTransport, tls
 	if cfg.ForwardingTimeouts != nil {
 		transport.ResponseHeaderTimeout = time.Duration(cfg.ForwardingTimeouts.ResponseHeaderTimeout)
 		transport.IdleConnTimeout = time.Duration(cfg.ForwardingTimeouts.IdleConnTimeout)
-		transport.DialContext = customDialContext(dialer, cfg.ForwardingTimeouts)
+		transport.DialContext = customDialContext(dial, cfg.ForwardingTimeouts)
 		// The forwarding timeout names come from the x/net/http2.Transport fields (ReadIdleTimeout/PingTimeout),
 		// which were used to configure the HTTP/2 health checks before the net/http native support (Go 1.24).
 		// HTTP2Config.SendPingTimeout carries the same semantics as ReadIdleTimeout:

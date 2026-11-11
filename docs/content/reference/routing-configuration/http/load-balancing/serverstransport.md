@@ -100,6 +100,23 @@ labels:
 }
 ```
 
+## Local Unix Socket
+
+With the file provider, set `unixSocket` to an absolute path visible to Traefik. Attach this transport to an HTTP service whose backend listens on that socket. The HTTP URL still supplies the scheme and request path. Traefik uses the socket for requests and health checks.
+
+```yaml
+http:
+  serversTransports:
+    local-app:
+      unixSocket: /run/local-app/http.sock
+  services:
+    local-app:
+      loadBalancer:
+        serversTransport: local-app
+        servers:
+          - url: http://local-app.invalid
+```
+
 ## Configuration Options
 
 | Field                                                                                                                                                                                                          | Description                                                                                                                              | Default | Required |

@@ -572,6 +572,7 @@ type HealthCheck struct{}
 
 // ServersTransport options to configure communication between Traefik and the servers.
 type ServersTransport struct {
+	UnixSocket          string                  `description:"Connects to the backend through this absolute Unix socket path." json:"unixSocket,omitempty" toml:"unixSocket,omitempty" yaml:"unixSocket,omitempty"`
 	ServerName          string                  `description:"Defines the serverName used to contact the server." json:"serverName,omitempty" toml:"serverName,omitempty" yaml:"serverName,omitempty"`
 	InsecureSkipVerify  bool                    `description:"Disables SSL certificate verification." json:"insecureSkipVerify,omitempty" toml:"insecureSkipVerify,omitempty" yaml:"insecureSkipVerify,omitempty" export:"true"`
 	RootCAs             []types.FileOrContent   `description:"Defines a list of CA certificates used to validate server certificates." json:"rootCAs,omitempty" toml:"rootCAs,omitempty" yaml:"rootCAs,omitempty"`
