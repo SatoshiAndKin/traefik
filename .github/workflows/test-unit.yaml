@@ -13,6 +13,10 @@ on:
       - '**.md'
       - 'script/release/**'
 
+concurrency:
+  group: pr-ci-test-unit.yaml-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
