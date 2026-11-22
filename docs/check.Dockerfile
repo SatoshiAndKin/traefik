@@ -34,4 +34,4 @@ WORKDIR /app
 VOLUME ["/tmp","/app"]
 
 # Tini propagates termination to the parallel check subprocesses.
-ENTRYPOINT ["/usr/bin/tini","-g","sh"]
+ENTRYPOINT ["/usr/bin/tini","-g","--","sh"]
