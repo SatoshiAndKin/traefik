@@ -119,11 +119,11 @@ func getDockerDesktopHostIP(t *testing.T) string {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
-		Image: "alpine",
+		Image: "debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2",
 		HostConfigModifier: func(config *container.HostConfig) {
 			config.AutoRemove = true
 		},
-		Cmd: []string{"getent", "hosts", "host.docker.internal"},
+		Cmd: []string{"getent", "ahostsv4", "host.docker.internal"},
 	}
 
 	con, err := testcontainers.GenericContainer(t.Context(), testcontainers.GenericContainerRequest{
@@ -138,11 +138,11 @@ func getDockerDesktopHostIP(t *testing.T) string {
 	all, err := io.ReadAll(closer)
 	require.NoError(t, err)
 
-	ipRegex := regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
-	matches := ipRegex.FindAllString(string(all), -1)
+	ipRegex := regexp.MustCompile(`(?m)^((?:\d{1,3}\.){3}\d{1,3})\s+STREAM\b`)
+	matches := ipRegex.FindAllStringSubmatch(string(all), -1)
 	require.Len(t, matches, 1)
 
-	return matches[0]
+	return matches[0][1]
 }
 
 func isDockerDesktop(t *testing.T) bool {
